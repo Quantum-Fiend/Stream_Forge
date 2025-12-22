@@ -1,0 +1,12 @@
+FROM gradle:8-jdk17 AS build
+WORKDIR /app
+COPY . .
+RUN ./gradlew :api-kotlin:build -x test
+
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
+COPY --from=build /app/api-kotlin/build/libs/*.jar app.jar
+EXPOSE 8080
+ENV DATA_DIR=/data
+ENV JAVA_OPTS="-Xmx2g -Xms512m"
+CMD ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

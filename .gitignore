@@ -1,0 +1,56 @@
+# .gitignore for StreamForge
+
+# Gradle
+.gradle/
+build/
+**/build/
+gradle-app.setting
+!gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.metals/
+.bloop/
+
+# Scala
+target/
+*.class
+*.log
+.cache-main
+.cache-tests
+
+# Java
+*.class
+hs_err_pid*
+
+# Kotlin
+*.kotlin_module
+
+# Flutter/Dart
+dashboard-flutter/.dart_tool/
+dashboard-flutter/build/
+dashboard-flutter/.flutter-plugins
+dashboard-flutter/.flutter-plugins-dependencies
+dashboard-flutter/.packages
+dashboard-flutter/pubspec.lock
+
+# Data directories
+data/
+checkpoints/
+state/
+*.rdb
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml

@@ -1,0 +1,55 @@
+name: streamforge_dashboard
+description: Real-time distributed data processing platform dashboard
+publish_to: 'none'
+version: 1.0.0
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # Charts and visualization
+  fl_chart: ^0.65.0
+  syncfusion_flutter_charts: ^24.1.41
+  
+  # State management
+  provider: ^6.1.1
+  
+  # HTTP and WebSocket
+  http: ^1.1.2
+  web_socket_channel: ^2.4.0
+  
+  # JSON serialization
+  json_annotation: ^4.8.1
+  
+  # Utilities
+  intl: ^0.18.1
+  uuid: ^4.2.2
+  
+  # Icons
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  
+  flutter_lints: ^3.0.1
+  build_runner: ^2.4.7
+  json_serializable: ^6.7.1
+
+flutter:
+  uses-material-design: true
+  
+  # Fonts
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700

@@ -1,0 +1,12 @@
+{
+    "id": "click-stream-analysis",
+    "name": "Click Stream Analysis",
+    "type": "STREAMING",
+    "config": {
+        "source": "click-events",
+        "sink": "dashboard",
+        "parallelism": 4,
+        "checkpointInterval": 60000,
+        "maxRetries": 3
+    }
+}
