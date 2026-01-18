@@ -437,7 +437,7 @@ This project is licensed under the **MIT License** — see [LICENSE](LICENSE) fo
 
 <div align="center">
 
-### Built with 💜 by StreamForge Team
+### Built with 💜 by Tushar 💫
 
 [![GitHub stars](https://img.shields.io/github/stars/yourusername/streamforge?style=social)](https://github.com/yourusername/streamforge)
 [![GitHub forks](https://img.shields.io/github/forks/yourusername/streamforge?style=social)](https://github.com/yourusername/streamforge/fork)
