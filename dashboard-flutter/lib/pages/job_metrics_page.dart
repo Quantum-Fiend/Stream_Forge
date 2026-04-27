@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:provider/provider.dart';
-import '../services/api_service.dart';
+import '../services/mock_data_service.dart';
 import 'dart:async';
 
 class JobMetricsPage extends StatefulWidget {
@@ -15,236 +14,299 @@ class _JobMetricsPageState extends State<JobMetricsPage> {
   Timer? _timer;
   List<Map<String, dynamic>> _jobs = [];
   String? _selectedJobId;
-  
-  final List<FlSpot> _eventsProcessedData = [];
+
+  // Rolling X counter — never resets so chart stays correct after trimming
+  int _xCounter = 0;
+  final int _maxDataPoints = 40;
+
+  final List<FlSpot> _throughputData = [];
   final List<FlSpot> _latencyData = [];
-  
+
+  final _mockData = MockDataService();
+
   @override
   void initState() {
     super.initState();
     _loadJobs();
-    _startMetricsPolling();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _loadJobs();
+      if (_selectedJobId != null) _tick();
+    });
   }
-  
-  Future<void> _loadJobs() async {
-    try {
-      // Simulate loading jobs
-      setState(() {
-        _jobs = [
-          {
-            'jobId': 'job-001',
-            'name': 'Click Stream Aggregation',
-            'state': 'RUNNING',
-            'eventsProcessed': 125000,
-            'eventsPerSecond': 850.5,
-            'avgLatency': 12.3,
-          },
-          {
-            'jobId': 'job-002',
-            'name': 'User Activity Analysis',
-            'state': 'RUNNING',
-            'eventsProcessed': 89000,
-            'eventsPerSecond': 620.2,
-            'avgLatency': 15.7,
-          },
-          {
-            'jobId': 'job-003',
-            'name': 'Transaction Monitoring',
-            'state': 'PAUSED',
-            'eventsProcessed': 45000,
-            'eventsPerSecond': 0,
-            'avgLatency': 0,
-          },
-        ];
-        
-        if (_jobs.isNotEmpty) {
-          _selectedJobId = _jobs.first['jobId'];
-        }
-      });
-    } catch (e) {
-      print('Error loading jobs: $e');
-    }
-  }
-  
-  void _startMetricsPolling() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_selectedJobId != null) {
-        _updateJobMetrics();
+
+  void _loadJobs() {
+    final jobs = _mockData.getJobs();
+    setState(() {
+      _jobs = jobs;
+      // If selected job was cancelled, fall back to first available
+      if (_selectedJobId != null &&
+          !_jobs.any((j) => j['jobId'] == _selectedJobId)) {
+        _selectedJobId = _jobs.isNotEmpty ? _jobs.first['jobId'] : null;
+        _throughputData.clear();
+        _latencyData.clear();
+        _xCounter = 0;
+      }
+      if (_selectedJobId == null && _jobs.isNotEmpty) {
+        _selectedJobId = _jobs.first['jobId'];
       }
     });
   }
-  
-  void _updateJobMetrics() {
+
+  void _tick() {
+    final job = _jobs.firstWhere(
+      (j) => j['jobId'] == _selectedJobId,
+      orElse: () => {},
+    );
+    if (job.isEmpty) return;
+
     setState(() {
-      final time = _eventsProcessedData.length.toDouble();
-      if (_eventsProcessedData.length > 30) {
-        _eventsProcessedData.removeAt(0);
+      final x = _xCounter.toDouble();
+      _xCounter++;
+
+      if (_throughputData.length >= _maxDataPoints) {
+        _throughputData.removeAt(0);
         _latencyData.removeAt(0);
       }
-      
-      // Simulate metrics
-      final job = _jobs.firstWhere((j) => j['jobId'] == _selectedJobId);
-      _eventsProcessedData.add(FlSpot(time, job['eventsPerSecond'] / 10));
-      _latencyData.add(FlSpot(time, 10 + (DateTime.now().millisecond % 20).toDouble()));
+
+      final isRunning = job['state'] == 'RUNNING';
+      final eps = isRunning ? (job['eventsPerSecond'] as double) : 0.0;
+      final lat = isRunning ? (job['avgLatency'] as double) : 0.0;
+
+      _throughputData.add(FlSpot(x, eps));
+      _latencyData.add(FlSpot(x, lat));
     });
   }
-  
+
+  void _switchJob(String? jobId) {
+    setState(() {
+      _selectedJobId = jobId;
+      _throughputData.clear();
+      _latencyData.clear();
+      _xCounter = 0;
+    });
+  }
+
   @override
   void dispose() {
     _timer?.cancel();
     super.dispose();
   }
-  
+
+  Map<String, dynamic> get _selectedJob =>
+      _jobs.firstWhere((j) => j['jobId'] == _selectedJobId, orElse: () => {});
+
+  bool get _isRunning => _selectedJob['state'] == 'RUNNING';
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF0F172A),
       appBar: AppBar(
-        title: const Text('Job Metrics'),
+        title: const Text('Job Metrics',
+            style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Job selector
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E293B),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.1),
-                ),
-              ),
-              child: DropdownButton<String>(
-                value: _selectedJobId,
-                isExpanded: true,
-                underline: const SizedBox(),
-                dropdownColor: const Color(0xFF1E293B),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-                items: _jobs.map((job) {
-                  return DropdownMenuItem<String>(
-                    value: job['jobId'],
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: _getStateColor(job['state']),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(job['name']),
-                      ],
-                    ),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedJobId = value;
-                    _eventsProcessedData.clear();
-                    _latencyData.clear();
-                  });
-                },
-              ),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Metrics cards for selected job
-            if (_selectedJobId != null) ...[
-              Row(
+      body: _jobs.isEmpty
+          ? const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Expanded(child: _buildMetricCard(
-                    'Events Processed',
-                    _getSelectedJob()['eventsProcessed'].toString(),
-                    Icons.bar_chart,
-                    const Color(0xFF6366F1),
-                  )),
-                  const SizedBox(width: 16),
-                  Expanded(child: _buildMetricCard(
-                    'Events/Sec',
-                    _getSelectedJob()['eventsPerSecond'].toStringAsFixed(1),
-                    Icons.speed,
-                    const Color(0xFF10B981),
-                  )),
-                  const SizedBox(width: 16),
-                  Expanded(child: _buildMetricCard(
-                    'Avg Latency',
-                    '${_getSelectedJob()['avgLatency']} ms',
-                    Icons.timer,
-                    const Color(0xFFF59E0B),
-                  )),
+                  Icon(Icons.analytics_outlined,
+                      size: 56, color: Colors.white24),
+                  SizedBox(height: 12),
+                  Text('No jobs to monitor.',
+                      style: TextStyle(color: Colors.white38)),
                 ],
               ),
-              
-              const SizedBox(height: 24),
-              
-              // Charts
-              Expanded(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _buildChartCard(
-                        'Throughput',
-                        _buildLineChart(_eventsProcessedData, const Color(0xFF6366F1)),
-                      ),
+            )
+          : Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Job selector ─────────────────────────────────────
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E293B),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: Colors.white.withOpacity(0.1)),
                     ),
-                    const SizedBox(width: 16),
+                    child: DropdownButton<String>(
+                      value: _selectedJobId,
+                      isExpanded: true,
+                      underline: const SizedBox(),
+                      dropdownColor: const Color(0xFF1E293B),
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 15),
+                      items: _jobs.map((job) {
+                        final color = _stateColor(job['state']);
+                        return DropdownMenuItem<String>(
+                          value: job['jobId'],
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                    color: color,
+                                    shape: BoxShape.circle),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  job['name'],
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: color.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  job['state'],
+                                  style: TextStyle(
+                                      fontSize: 9,
+                                      color: color,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: _switchJob,
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // ── Metric cards ─────────────────────────────────────
+                  if (_selectedJob.isNotEmpty) ...[
+                    Row(
+                      children: [
+                        Expanded(
+                            child: _buildMetricCard(
+                          'Events Processed',
+                          _formatNum(_selectedJob['eventsProcessed']),
+                          Icons.bar_chart_rounded,
+                          const Color(0xFF6366F1),
+                        )),
+                        const SizedBox(width: 16),
+                        Expanded(
+                            child: _buildMetricCard(
+                          'Events / sec',
+                          _isRunning
+                              ? '${(_selectedJob['eventsPerSecond'] as double).toStringAsFixed(0)}'
+                              : '—',
+                          Icons.bolt_rounded,
+                          const Color(0xFF10B981),
+                        )),
+                        const SizedBox(width: 16),
+                        Expanded(
+                            child: _buildMetricCard(
+                          'Avg Latency',
+                          _isRunning
+                              ? '${(_selectedJob['avgLatency'] as double).toStringAsFixed(1)} ms'
+                              : '—',
+                          Icons.timer_outlined,
+                          const Color(0xFFF59E0B),
+                        )),
+                      ],
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // ── Charts ──────────────────────────────────────────
                     Expanded(
-                      child: _buildChartCard(
-                        'Latency (ms)',
-                        _buildLineChart(_latencyData, const Color(0xFFF59E0B), maxY: 40),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _buildChartCard(
+                              title: 'Throughput (events/s)',
+                              chart: _buildLineChart(
+                                  _throughputData,
+                                  const Color(0xFF6366F1),
+                                  dynamicMax: true),
+                              badge: _isRunning
+                                  ? _liveBadge()
+                                  : _pausedBadge(_selectedJob['state']),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildChartCard(
+                              title: 'Latency (ms)',
+                              chart: _buildLineChart(
+                                  _latencyData,
+                                  const Color(0xFFF59E0B),
+                                  maxY: 60),
+                              badge: _isRunning
+                                  ? _liveBadge()
+                                  : _pausedBadge(_selectedJob['state']),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
-                ),
+                ],
               ),
-            ],
-          ],
-        ),
-      ),
+            ),
     );
   }
-  
-  Map<String, dynamic> _getSelectedJob() {
-    return _jobs.firstWhere((j) => j['jobId'] == _selectedJobId, orElse: () => {});
+
+  // ── Widgets ────────────────────────────────────────────────────────────
+
+  Widget _liveBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFF10B981).withOpacity(0.15),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+            color: const Color(0xFF10B981).withOpacity(0.5)),
+      ),
+      child: const Text('● LIVE',
+          style: TextStyle(
+              fontSize: 10,
+              color: Color(0xFF10B981),
+              fontWeight: FontWeight.bold)),
+    );
   }
-  
-  Color _getStateColor(String state) {
-    switch (state) {
-      case 'RUNNING':
-        return const Color(0xFF10B981);
-      case 'PAUSED':
-        return const Color(0xFFF59E0B);
-      case 'FAILED':
-        return const Color(0xFFEF4444);
-      default:
-        return Colors.grey;
-    }
+
+  Widget _pausedBadge(String state) {
+    final color = _stateColor(state);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withOpacity(0.5)),
+      ),
+      child: Text(state,
+          style: TextStyle(
+              fontSize: 10,
+              color: color,
+              fontWeight: FontWeight.bold)),
+    );
   }
-  
-  Widget _buildMetricCard(String title, String value, IconData icon, Color color) {
+
+  Widget _buildMetricCard(
+      String title, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF1E293B),
-            const Color(0xFF1E293B).withOpacity(0.8),
-          ],
-        ),
+        color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: color.withOpacity(0.2),
-          width: 1,
-        ),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -252,54 +314,51 @@ class _JobMetricsPageState extends State<JobMetricsPage> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: color, size: 20),
           ),
-          const SizedBox(height: 16),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
+          const SizedBox(height: 14),
+          Text(value,
+              style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white)),
           const SizedBox(height: 4),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.white.withOpacity(0.6),
-            ),
-          ),
+          Text(title,
+              style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.white.withOpacity(0.5))),
         ],
       ),
     );
   }
-  
-  Widget _buildChartCard(String title, Widget chart) {
+
+  Widget _buildChartCard(
+      {required String title,
+      required Widget chart,
+      required Widget badge}) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.1),
-          width: 1,
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.07)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
+          Row(
+            children: [
+              Text(title,
+                  style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white)),
+              const Spacer(),
+              badge,
+            ],
           ),
           const SizedBox(height: 16),
           Expanded(child: chart),
@@ -307,55 +366,89 @@ class _JobMetricsPageState extends State<JobMetricsPage> {
       ),
     );
   }
-  
-  Widget _buildLineChart(List<FlSpot> data, Color color, {double maxY = 100}) {
+
+  Widget _buildLineChart(List<FlSpot> data, Color color,
+      {double maxY = 100, bool dynamicMax = false}) {
     if (data.isEmpty) {
       return const Center(
-        child: Text(
-          'No data yet',
-          style: TextStyle(color: Colors.white54),
-        ),
-      );
+          child: Text('Collecting data…',
+              style: TextStyle(color: Colors.white38)));
     }
-    
+
+    final minX = data.first.x;
+    final maxX = data.first.x == data.last.x ? data.first.x + 1 : data.last.x;
+
+    double computedMax = maxY;
+    if (dynamicMax && data.isNotEmpty) {
+      final peak = data.map((s) => s.y).reduce((a, b) => a > b ? a : b);
+      computedMax = (peak * 1.3).clamp(10.0, double.infinity);
+    }
+
     return LineChart(
       LineChartData(
+        clipData: const FlClipData.all(),
         gridData: FlGridData(
           show: true,
           drawVerticalLine: false,
-          getDrawingHorizontalLine: (value) {
-            return FlLine(
-              color: Colors.white.withOpacity(0.1),
-              strokeWidth: 1,
-            );
-          },
+          horizontalInterval: computedMax / 4,
+          getDrawingHorizontalLine: (_) => FlLine(
+            color: Colors.white.withOpacity(0.07),
+            strokeWidth: 1,
+          ),
         ),
         titlesData: FlTitlesData(show: false),
         borderData: FlBorderData(show: false),
+        minX: minX,
+        maxX: maxX,
+        minY: 0,
+        maxY: computedMax,
         lineBarsData: [
           LineChartBarData(
             spots: data,
             isCurved: true,
+            curveSmoothness: 0.3,
             color: color,
-            barWidth: 3,
+            barWidth: 2.5,
             isStrokeCapRound: true,
-            dotData: FlDotData(show: false),
+            dotData: const FlDotData(show: false),
             belowBarData: BarAreaData(
               show: true,
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  color.withOpacity(0.3),
+                  color.withOpacity(0.25),
                   color.withOpacity(0.0),
                 ],
               ),
             ),
           ),
         ],
-        minY: 0,
-        maxY: maxY,
       ),
     );
+  }
+
+  // ── Utils ──────────────────────────────────────────────────────────────
+
+  Color _stateColor(String state) {
+    switch (state) {
+      case 'RUNNING':
+        return const Color(0xFF10B981);
+      case 'PAUSED':
+        return const Color(0xFFF59E0B);
+      case 'FAILED':
+        return const Color(0xFFEF4444);
+      case 'COMPLETED':
+        return const Color(0xFF8B5CF6);
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _formatNum(dynamic n) {
+    final v = n is int ? n : (n as double).toInt();
+    if (v >= 1000000) return '${(v / 1000000).toStringAsFixed(2)}M';
+    if (v >= 1000) return '${(v / 1000).toStringAsFixed(1)}K';
+    return v.toString();
   }
 }

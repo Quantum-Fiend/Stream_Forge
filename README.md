@@ -4,6 +4,8 @@
 
 ### Real-Time Distributed Data Processing Platform
 
+<img src="docs/assets/banner.png" alt="StreamForge Banner" width="100%"/>
+
 [![Scala](https://img.shields.io/badge/Scala-DC322F?style=for-the-badge&logo=scala&logoColor=white)](https://scala-lang.org)
 [![Java](https://img.shields.io/badge/Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://openjdk.org)
 [![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org)
@@ -113,7 +115,7 @@ stream("events")
 ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │                                                                                                         │
 │    ┌───────────────────────────────────────────────────────────────────────────────────────────────┐    │
-│    │                        🔵 KOTLIN API LAYER (Port 8080)                                       │     │
+│    │                        🔵 KOTLIN API LAYER (Port 8080)                                        │    │
 │    │                                                                                               │    │
 │    │   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                    │    │
 │    │   │  REST API   │    │   gRPC      │    │  WebSocket  │    │  Scheduler  │                    │    │
@@ -126,8 +128,8 @@ stream("events")
 │    ┌───────────────────────────────────────────────────────────────────────────────────────────────┐    │
 │    │                        🔴 SCALA PROCESSING ENGINE                                             │    │
 │    │                                                                                               │    │
-│    │   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                    │    │ 
-│    │   │ Custom DSL  │───▶│ Stream Graph│───▶│  Operators  │───▶│  Windowing  │                  │    │
+│    │   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                    │    │
+│    │   │ Custom DSL  │───▶│ Stream Graph│───▶│  Operators  │───▶│  Windowing  │                    │    │
 │    │   │   Parser    │    │   Builder   │    │ Map/Filter  │    │  Aggregate  │                    │    │
 │    │   └─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘                    │    │
 │    │                              Akka Streams • Reactive • Backpressure                           │    │
@@ -135,9 +137,9 @@ stream("events")
 │                                                              │                                          │
 │                                                              ▼                                          │
 │    ┌───────────────────────────────────────────────────────────────────────────────────────────────┐    │
-│    │                        🟢 JAVA INFRASTRUCTURE LAYER                                           │   │
+│    │                        🟢 JAVA INFRASTRUCTURE LAYER                                           │    │
 │    │                                                                                               │    │
-│    │   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                    │    │ 
+│    │   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                    │    │
 │    │   │ Checkpoint  │    │   State     │    │  Cluster    │    │  Recovery   │                    │    │
 │    │   │  Manager    │    │   Store     │    │ Coordinator │    │  Manager    │                    │    │
 │    │   │ (RocksDB)   │    │ (RocksDB)   │    │ (ZooKeeper) │    │  (Health)   │                    │    │
@@ -175,7 +177,7 @@ stream("events")
 ┌────────────────────────────┐
 │  🟢 Active Nodes: 3        │
 │  📊 Running Jobs: 5        │
-│  ⚡ Events/sec: 1,250      │
+│  ⚡ Events/sec: 1,250       │
 ├────────────────────────────┤
 │  CPU Usage                 │
 │  ████████████░░░░░ 65%     │
@@ -184,7 +186,7 @@ stream("events")
 │  ██████████████░░░ 72%     │
 ├────────────────────────────┤
 │  Throughput (events/s)     │
-│  📈 ▁▂▄▆█▇▅▆▇█▆▇█▅▆     │
+│  📈 ▁▂▄▆█▇▅▆▇█▆▇█▅▆        │
 └────────────────────────────┘
 ```
 
@@ -203,10 +205,10 @@ stream("events")
 │  Latency: 12ms             │
 ├────────────────────────────┤
 │  Throughput                │
-│  📈 ▂▃▅▆▇█▇▆▇█▇▅▆█         
+│  📈 ▂▃▅▆▇█▇▆▇█▇▅▆█         |
 ├────────────────────────────┤
 │  Latency (ms)              │
-│  📉 ▅▄▃▂▁▂▃▂▁▂▃     │
+│  📉 ▅▄▃▂▁▂▃▂▁▂▃            │
 └────────────────────────────┘
 ```
 
@@ -239,39 +241,85 @@ stream("events")
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Getting Started (Zero to Hero Guide)
+
+StreamForge consists of a **Kotlin/Scala/Java Backend** and a **Cross-Platform Flutter Dashboard**. You can run the dashboard completely standalone (using its Mock Engine) or alongside the real backend.
 
 ### Prerequisites
 
-- **JDK 17+** — For Scala, Java, Kotlin
-- **Flutter 3.0+** — For dashboard
-- **Docker** — For containerized deployment
+- **Flutter 3.0+** — Required for the Dashboard App/Website.
+- **JDK 17+** — Required if running the Kotlin/Scala Backend.
+- **Docker** — Required for running the full cluster easily.
 
-### Run with Docker (Recommended)
+---
 
+### 🎨 Running the Dashboard (Frontend Only)
+
+The dashboard has a built-in **Stateful Mock Engine**. This means you can run it perfectly without ever starting the backend—ideal for testing, design, or showcasing the UI. Because it's built with Flutter, you can run it on **any platform** from the exact same codebase!
+
+First, navigate to the dashboard directory:
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/streamforge.git
-cd streamforge
-
-# Start all services
-docker-compose up -d
-
-# Access
-# API:       http://localhost:8080
-# Dashboard: http://localhost:3000
+cd dashboard-flutter
+flutter pub get
 ```
 
-### Build from Source
-
+#### 🌐 Option A: Run as a Website (Web App)
+To run the dashboard locally in your browser:
 ```bash
-# Build backend
+flutter run -d web-server --web-port 3000
+```
+Then, open `http://localhost:3000` in your browser. *(Note: On small screens, the UI automatically transforms into a mobile-friendly layout with a bottom navigation bar!)*
+
+#### 📱 Option B: Run as a Mobile App (Android/iOS)
+To run the dashboard as a native mobile application on your connected smartphone or an emulator:
+```bash
+# To see available devices (Emulators, physical devices)
+flutter devices
+
+# Run on Android or iOS
+flutter run
+```
+
+#### 💻 Option C: Run as a Desktop App (Windows/macOS/Linux)
+To compile it into a high-performance native desktop application:
+```bash
+# Enable desktop support if you haven't already
+flutter config --enable-windows-desktop
+flutter config --enable-macos-desktop
+
+# Run the app natively
+flutter run -d windows  # or -d macos
+```
+
+---
+
+### ⚙️ Running the Full Stack (Backend + UI)
+
+If you want to run the real Scala processing engine and Kotlin API:
+
+#### Method 1: Using Docker (Recommended)
+```bash
+# Start all microservices (API, Engine, ZooKeeper, Dashboard)
+docker-compose up -d
+
+# API is available at:       http://localhost:8080
+# Dashboard is available at: http://localhost:3000
+```
+
+#### Method 2: Build from Source
+Open two separate terminals in the project root:
+
+**Terminal 1 (Backend):**
+```bash
+# Build all Java/Scala/Kotlin modules
 ./gradlew build
 
-# Run API server
+# Run the API server
 ./gradlew :api-kotlin:run
+```
 
-# Run dashboard (separate terminal)
+**Terminal 2 (Dashboard):**
+```bash
 cd dashboard-flutter
 flutter run -d web-server --web-port 3000
 ```
